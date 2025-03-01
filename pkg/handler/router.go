@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/core"
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/schemas"
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/utils"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/core"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/schemas"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 

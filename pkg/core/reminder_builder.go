@@ -7,8 +7,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/schemas"
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/utils"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/schemas"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 

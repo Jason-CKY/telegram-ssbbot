@@ -5,9 +5,9 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/core"
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/handler"
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/utils"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/core"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/handler"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )

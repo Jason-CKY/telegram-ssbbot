@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Jason-CKY/telegram-reminderbot/pkg/utils"
+	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
 )
 
 type Reminder struct {
