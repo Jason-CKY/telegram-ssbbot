@@ -46,7 +46,7 @@ func main() {
 		panic(err)
 	}
 
-	go core.ScheduledReminderTrigger(bot)
+	go core.ScheduleUpdate(bot)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
