@@ -1,4 +1,4 @@
-# Golang telegram reminder bot
+# Golang telegram singapore savings bonds (ssb) bot
 
 ## Dependencies
 
