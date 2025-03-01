@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	log "github.com/sirupsen/logrus"
 	"github.com/vicanso/go-charts/v2"
 )
 
@@ -26,91 +25,59 @@ func writeFile(buf []byte) error {
 }
 
 func ScheduleUpdate(bot *tgbotapi.BotAPI) {
-	log.Info("test")
-	values := [][]float64{
-		{
-			120,
-			132,
-			101,
-			// 134,
-			charts.GetNullValue(),
-			90,
-			230,
-			210,
+	chartOption := charts.ChartOption{
+		Width:  1000,
+		Height: 400,
+		SeriesList: []charts.Series{
+			{
+				Type: charts.ChartTypeLine,
+				Data: charts.NewSeriesDataFromValues([]float64{
+					2.0,
+					4.9,
+					3.0,
+					3.2,
+					2.6,
+					2.7,
+					3.6,
+					2.2,
+					2.6,
+					2.0,
+					3.4,
+					3.3,
+				}),
+				Label: charts.SeriesLabel{Show: *charts.TrueFlag()},
+			}},
+		Title: charts.TitleOption{
+			Text: "Singapore Savings Bonds Interest Rates",
 		},
-		{
-			220,
-			182,
-			191,
-			234,
-			290,
-			330,
-			310,
+		Padding: charts.Box{
+			Top:    20,
+			Left:   20,
+			Right:  20,
+			Bottom: 20,
 		},
-		{
-			150,
-			232,
-			201,
-			154,
-			190,
-			330,
-			410,
-		},
-		{
-			320,
-			332,
-			301,
-			334,
-			390,
-			330,
-			320,
-		},
-		{
-			820,
-			932,
-			901,
-			934,
-			1290,
-			1330,
-			1320,
+		Legend: charts.NewLegendOption([]string{
+			"Interest Rates",
+		}, charts.PositionRight),
+		XAxis: charts.NewXAxisOption([]string{
+			"01/25",
+			"02/25",
+			"03/25",
+			"04/25",
+			"05/25",
+			"06/25",
+			"07/25",
+			"08/25",
+			"09/25",
+			"10/25",
+			"11/25",
+			"12/25",
+		}),
+		ValueFormatter: func(f float64) string {
+			return fmt.Sprintf("%.0f", f) + "%"
 		},
 	}
-	p, err := charts.LineRender(
-		values,
-		charts.TitleTextOptionFunc("Line"),
-		charts.XAxisDataOptionFunc([]string{
-			"Mon",
-			"Tue",
-			"Wed",
-			"Thu",
-			"Fri",
-			"Sat",
-			"Sun",
-		}),
-		charts.LegendLabelsOptionFunc([]string{
-			"Email",
-			"Union Ads",
-			"Video Ads",
-			"Direct",
-			"Search Engine",
-		}, "50"),
-		func(opt *charts.ChartOption) {
-			opt.Legend.Padding = charts.Box{
-				Top:    5,
-				Bottom: 10,
-			}
-			opt.YAxisOptions = []charts.YAxisOption{
-				{
-					SplitLineShow: charts.FalseFlag(),
-				},
-			}
-			opt.SymbolShow = charts.FalseFlag()
-			opt.LineStrokeWidth = 1
-			opt.ValueFormatter = func(f float64) string {
-				return fmt.Sprintf("%.0f", f)
-			}
-		},
-	)
+	p, err := charts.Render(chartOption)
 
 	if err != nil {
 		panic(err)

@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+func FloatPtr(num float64) *float64 {
+	return &num
+}
+
 func LookupEnvOrString(key string, defaultValue string) string {
 	envVariable, exists := os.LookupEnv(key)
 	if !exists {
