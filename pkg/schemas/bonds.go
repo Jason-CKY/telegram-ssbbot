@@ -6,15 +6,12 @@ type BondDate time.Time
 
 // Custom unmarshal function for time
 func (t *BondDate) UnmarshalJSON(data []byte) error {
-	// Define the custom time format
-	const layout = `"2006-01-02 15:04:05"`
 	str := string(data)
-
 	// Remove the surrounding quotes if present
 	str = str[1 : len(str)-1]
 
 	// Parse the string to time.Time
-	parsedTime, err := time.Parse(layout, str)
+	parsedTime, err := time.Parse(time.DateOnly, str)
 	if err != nil {
 		return err
 	}
@@ -48,10 +45,20 @@ type BondInterest struct {
 	Year10Return float64 `json:"year10_return"`
 }
 
+type ListSavingsBondsInterestResultResponse struct {
+	Total   int            `json:"total"`
+	Records []BondInterest `json:"records"`
+}
+
+type ListSavingsBondsInterestResponse struct {
+	Success bool                                   `json:"success"`
+	Result  ListSavingsBondsInterestResultResponse `json:"result"`
+}
+
 type SavingsBonds struct {
 	IssueCode                string   `json:"issue_code"`
 	ISINCode                 string   `json:"isin_code"`
-	AuctionTenor             int      `json:"auction_tenor"`               // how many years to maturity
+	AuctionTenor             float64  `json:"auction_tenor"`
 	IssueSize                float64  `json:"issue_size"`                  // in million of dollars
 	AmountApplied            float64  `json:"amount_applied"`              // in million of dollars
 	TotalAppliedWithinLimits float64  `json:"total_applied_within_limits"` // in million of dollars. Total amount within individual allotment limits.
@@ -70,4 +77,14 @@ type SavingsBonds struct {
 	TenderDate               BondDate `json:"tender_date"`
 	StartOfRedemption        BondDate `json:"start_of_redemption"`
 	EndOfRedemption          BondDate `json:"end_of_redemption"`
+}
+
+type ListSavingsBondsResultResponse struct {
+	Total   int            `json:"total"`
+	Records []SavingsBonds `json:"records"`
+}
+
+type ListSavingsBondsResponse struct {
+	Success bool                           `json:"success"`
+	Result  ListSavingsBondsResultResponse `json:"result"`
 }
