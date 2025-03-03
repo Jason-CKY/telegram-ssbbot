@@ -105,7 +105,7 @@ func generateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]
 				Label: charts.SeriesLabel{Show: *charts.TrueFlag()},
 			}},
 		Title: charts.TitleOption{
-			Text: "Singapore Savings Bonds Interest Rates",
+			Text: "Singapore Savings Bonds 10-Year Returns",
 		},
 		Padding: charts.Box{
 			Top:    20,
