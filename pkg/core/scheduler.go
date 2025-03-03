@@ -15,7 +15,7 @@ import (
 	"github.com/vicanso/go-charts/v2"
 )
 
-func listBonds(startDate time.Time, endDate time.Time, rows int) (*[]schemas.SavingsBonds, error) {
+func ListBonds(startDate time.Time, endDate time.Time, rows int) (*[]schemas.SavingsBonds, error) {
 	queryParams := fmt.Sprintf("rows=%v&filters=issue_date:[%v+TO+%v]&sort=issue_date+asc", rows, startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
 	endpoint := fmt.Sprintf("%v?%v", "https://eservices.mas.gov.sg/statistics/api/v1/bondsandbills/m/listsavingbonds", queryParams)
 
@@ -46,7 +46,7 @@ func listBonds(startDate time.Time, endDate time.Time, rows int) (*[]schemas.Sav
 	return &savingsBondsAPIResponse.Result.Records, nil
 }
 
-func listBondInterestRates(bond schemas.SavingsBonds) (*schemas.BondInterest, error) {
+func ListBondInterestRates(bond schemas.SavingsBonds) (*schemas.BondInterest, error) {
 	endpoint := fmt.Sprintf("https://eservices.mas.gov.sg/statistics/api/v1/bondsandbills/m/savingbondsinterest?filters=issue_code:%v", bond.IssueCode)
 
 	log.Debugf("querying %v", endpoint)
@@ -94,7 +94,7 @@ func writeFile(buf []byte) error {
 	return nil
 }
 
-func generateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]byte, error) {
+func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]byte, error) {
 	chartOption := charts.ChartOption{
 		Width:  1000,
 		Height: 400,
@@ -139,8 +139,25 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 	if err != nil {
 		panic(err)
 	}
+	// var wg sync.WaitGroup
+	// for {
+	// 	dueReminders, err := schemas.GetDueReminders()
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	for i := 0; i < len(dueReminders); i++ {
+	// 		wg.Add(1)
+	// 		reminder := dueReminders[i]
+	// 		go func(reminder schemas.Reminder, bot *tgbotapi.BotAPI) {
+	// 			defer wg.Done()
+	// 			TriggerReminder(reminder, bot)
+	// 		}(reminder, bot)
+	// 	}
+	// 	wg.Wait()
+	// 	time.Sleep(24 * time.Hour)
+	// }
 	// extract the last 12 months of bonds information
-	bonds, err := listBonds(time.Now().In(localTimezone).AddDate(-1, 0, 0), time.Now().In(localTimezone), 12)
+	bonds, err := ListBonds(time.Now().In(localTimezone).AddDate(-1, 0, 0), time.Now().In(localTimezone), 12)
 	if err != nil {
 		panic(err)
 	}
@@ -149,14 +166,14 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 	var bondDates []string
 
 	for _, bond := range *bonds {
-		bondInterestRate, err := listBondInterestRates(bond)
+		bondInterestRate, err := ListBondInterestRates(bond)
 		if err != nil {
 			panic(err)
 		}
 		bondReturns = append(bondReturns, bondInterestRate.Year10Return)
 		bondDates = append(bondDates, time.Time(bond.IssueDate).Format("Jan 06"))
 	}
-	buf, err := generateSSBInterestRatesChart(bondReturns, bondDates)
+	buf, err := GenerateSSBInterestRatesChart(bondReturns, bondDates)
 	if err != nil {
 		panic(err)
 	}

@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
 )
 
 type ChatSettings struct {
-	ChatId   int64  `json:"chat_id"`
-	Timezone string `json:"timezone"`
-	Updating bool   `json:"updating"`
+	ChatId      int64     `json:"chat_id"`
+	DateUpdated time.Time `json:"date_updated"`
 }
 
 func (chatSettings ChatSettings) Create() error {
@@ -132,9 +132,8 @@ func InsertChatSettingsIfNotPresent(chatId int64) (*ChatSettings, bool, error) {
 	}
 	if chatSettings == nil {
 		chatSettings = &ChatSettings{
-			ChatId:   chatId,
-			Timezone: utils.DEFAULT_TIMEZONE,
-			Updating: false,
+			ChatId:      chatId,
+			DateUpdated: time.Now(),
 		}
 		err := chatSettings.Create()
 		if err != nil {
@@ -162,3 +161,49 @@ func MigrateChatSettingsChatId(fromChatId int64, toChatId int64) error {
 	}
 	return nil
 }
+
+// func GetDueReminders() ([]ChatSettings, error) {
+// 	endpoint := fmt.Sprintf("%v/items/chat_settings", utils.DirectusHost)
+// 	reqBody := []byte(fmt.Sprintf(`{
+// 		"query": {
+// 			"filter": {
+// 				"_and": [
+// 					{
+// 						"in_construction": {
+// 							"_eq": false
+// 						}
+// 					},
+// 					{
+// 						"date_updated": {
+// 							"_lt": "%v"
+// 						}
+// 					}
+// 				]
+// 			}
+// 		}
+// 	}`, time.Now().UTC().Format(utils.DIRECTUS_DATETIME_FORMAT)))
+// 	req, httpErr := http.NewRequest("SEARCH", endpoint, bytes.NewBuffer(reqBody))
+// 	req.Header.Set("Content-Type", "application/json")
+// 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", utils.DirectusToken))
+// 	if httpErr != nil {
+// 		return nil, httpErr
+// 	}
+// 	client := &http.Client{}
+// 	res, httpErr := client.Do(req)
+// 	if httpErr != nil {
+// 		return nil, httpErr
+// 	}
+// 	defer res.Body.Close()
+// 	body, _ := io.ReadAll(res.Body)
+// 	if res.StatusCode != 200 {
+// 		return nil, fmt.Errorf("error searching for reminder in directus: %v", string(body))
+// 	}
+// 	var reminderResponse map[string][]Reminder
+// 	jsonErr := json.Unmarshal(body, &reminderResponse)
+// 	// error handling for json unmarshaling
+// 	if jsonErr != nil {
+// 		return nil, jsonErr
+// 	}
+
+// 	return reminderResponse["data"], nil
+// }
