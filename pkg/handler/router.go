@@ -13,18 +13,13 @@ import (
 
 func HandleUpdate(update *tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	if update.Message != nil {
-		chatSettings, _, err := schemas.InsertChatSettingsIfNotPresent(update.Message.Chat.ID)
-		if err != nil {
-			log.Error(err)
-			return
-		}
 		if update.Message.IsCommand() {
-			HandleCommand(update, bot, chatSettings)
+			HandleCommand(update, bot)
 		}
 	}
 }
 
-func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings) {
+func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI) {
 	// Create a new MessageConfig. We don't have text yet,
 	// so we leave it empty.
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
@@ -34,8 +29,23 @@ func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI, chatSettings *
 	case "help":
 		msg.Text = utils.HELP_MESSAGE
 	case "subscribe":
+		_, _, err := schemas.InsertChatSettingsIfNotPresent(update.Message.Chat.ID)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		msg.Text = "You have subscribed to SSB rate updates."
 	case "unsubscribe":
+		chatSettings, _, err := schemas.InsertChatSettingsIfNotPresent(update.Message.Chat.ID)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		err = chatSettings.Delete()
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		msg.Text = "You have unsubscribed to SSB rate updates."
 	case "rates":
 		localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
@@ -43,7 +53,7 @@ func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI, chatSettings *
 			log.Error(err)
 			return
 		}
-		photoConfig, err := core.GenerateNotificationMessage(chatSettings, localTimezone)
+		photoConfig, err := core.GenerateNotificationMessage(update.Message.Chat.ID, localTimezone)
 		if err != nil {
 			log.Error(err)
 			return

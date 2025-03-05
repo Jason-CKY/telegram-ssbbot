@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +79,40 @@ func ListBondInterestRates(bond schemas.SavingsBonds) (*schemas.BondInterest, er
 	return &savingsBondsInterestsAPIResponse.Result.Records[0], nil
 }
 
+func FormatSavingsBondNotification(bond schemas.SavingsBonds, interest schemas.BondInterest) string {
+	issueCode := bond.IssueCode
+	issueDate := time.Time(bond.IssueDate).Format("02 Jan 2006")
+	maturityDate := time.Time(bond.MaturityDate).Format("02 Jan 2006")
+	lastDayToApply := time.Time(bond.LastDayToApply).Format("02 Jan 2006")
+
+	message := fmt.Sprintf(
+		"🇸🇬 *Singapore Savings Bonds \\(%s\\)* 🇸🇬\n\n"+
+			"*Issue Code:* %s\n"+
+			"*Issue Date:* %s\n"+
+			"*Maturity Date:* %s\n"+
+			"*Last Day to Apply:* %s\n\n"+
+			"*1\\-Year Average Return:* %.2f%%\n"+
+			"*10\\-Year Average Return:* %.2f%%\n\n"+
+			"*Key Dates:*\n"+
+			"\\- First Interest Date: %s\n"+
+			"\\- Interest Payment Months: %s\n\n"+
+			"*Additional Information:*\n"+
+			"\\- Issue Size: %.2f Million SGD\n",
+		issueCode,
+		issueCode,
+		issueDate,
+		maturityDate,
+		lastDayToApply,
+		interest.Year1Return,
+		interest.Year10Return,
+		time.Time(bond.FirstInterestDate).Format("02 Jan 2006"),
+		bond.PaymentMonth,
+		bond.IssueSize,
+	)
+	message = strings.Replace(message, ".", "\\.", -1)
+	return message
+}
+
 func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]byte, error) {
 	chartOption := charts.ChartOption{
 		Width:  1000,
@@ -89,7 +124,7 @@ func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]
 				Label: charts.SeriesLabel{Show: *charts.TrueFlag()},
 			}},
 		Title: charts.TitleOption{
-			Text: "Singapore Savings Bonds 10-Year Returns",
+			Text: "Singapore Savings Bonds 10-Year Average Returns",
 		},
 		Padding: charts.Box{
 			Top:    20,
@@ -118,14 +153,18 @@ func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]
 	return &buf, nil
 }
 
-func GenerateNotificationMessage(chatSettings *schemas.ChatSettings, timezone *time.Location) (*tgbotapi.PhotoConfig, error) {
+func GenerateNotificationMessage(chatID int64, timezone *time.Location) (*tgbotapi.PhotoConfig, error) {
 	// get the last 12 bonds
-	bondsPtr, err := ListBonds(time.Now().In(timezone).AddDate(-1, 0, 0), time.Now().In(timezone), 12)
+	bondsPtr, err := ListBonds(time.Now().In(timezone).AddDate(-1, 0, 0), time.Now().In(timezone).AddDate(0, 1, 0), 12)
 	if err != nil {
 		return nil, err
 	}
 	bonds := *bondsPtr
-	latestBond := bonds[0]
+
+	var latestBond schemas.SavingsBonds
+	var latestBondInterests schemas.BondInterest
+
+	latestBond = bonds[0]
 	for i := len(bonds)/2 - 1; i >= 0; i-- {
 		opp := len(bonds) - 1 - i
 		bonds[i], bonds[opp] = bonds[opp], bonds[i]
@@ -141,6 +180,9 @@ func GenerateNotificationMessage(chatSettings *schemas.ChatSettings, timezone *t
 		}
 		bondReturns = append(bondReturns, bondInterestRate.Year10Return)
 		bondDates = append(bondDates, time.Time(bond.IssueDate).Format("Jan 06"))
+		if bond.IssueCode == latestBond.IssueCode {
+			latestBondInterests = *bondInterestRate
+		}
 	}
 	buf, err := GenerateSSBInterestRatesChart(bondReturns, bondDates)
 	if err != nil {
@@ -150,11 +192,11 @@ func GenerateNotificationMessage(chatSettings *schemas.ChatSettings, timezone *t
 		Name:  "picture",
 		Bytes: *buf,
 	}
-	photoConfig := tgbotapi.NewPhoto(chatSettings.ChatId, photoFileBytes)
+	photoConfig := tgbotapi.NewPhoto(chatID, photoFileBytes)
 
 	// add message information on the latest bond
-	log.Info(time.Time(latestBond.IssueDate).Format(time.DateTime))
-	photoConfig.Caption = "test message test test"
+	photoConfig.Caption = FormatSavingsBondNotification(latestBond, latestBondInterests)
+	photoConfig.ParseMode = "MarkdownV2"
 	return &photoConfig, nil
 }
 
@@ -173,12 +215,12 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 		}
 
 		if len(chats) > 0 {
-			bondsPtr, err := ListBonds(time.Now().In(localTimezone).AddDate(0, -1, 0), time.Now().In(localTimezone), 1)
+			bondsPtr, err := ListBonds(time.Now().In(localTimezone).AddDate(0, -1, 0), time.Now().AddDate(0, 1, 0).In(localTimezone), 1)
 			if err != nil {
 				panic(err)
 			}
 			for _, bond := range *bondsPtr {
-				if time.Time(bond.IssueDate).Month() != time.Now().In(localTimezone).Month() {
+				if time.Time(bond.IssueDate).Month() < time.Now().In(localTimezone).Month() {
 					// this month's bonds not released yet, skipping loop
 					continue
 				}
@@ -189,7 +231,7 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 			wg.Add(1)
 			go func(bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings, timezone *time.Location) {
 				defer wg.Done()
-				photoConfig, err := GenerateNotificationMessage(chatSettings, timezone)
+				photoConfig, err := GenerateNotificationMessage(chatSettings.ChatId, timezone)
 				if err != nil {
 					panic(err)
 				}

@@ -9,15 +9,12 @@ import (
 	"time"
 
 	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
-	log "github.com/sirupsen/logrus"
 )
 
 type DatetimeWithoutTimezone time.Time
 
 func (t DatetimeWithoutTimezone) MarshalJSON() ([]byte, error) {
-	utcTime := time.Time(t).Truncate(time.Second)
-	formattedTime := utcTime.Format("2006-01-02T15:04:05")
-	log.Println("Marshaling DatetimeWithoutTimezone:", formattedTime) // Now this will be called.
+	formattedTime := time.Time(t).Format("2006-01-02T15:04:05")
 	return json.Marshal(formattedTime)
 }
 

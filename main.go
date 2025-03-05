@@ -36,7 +36,7 @@ func main() {
 	logLevel, _ := log.ParseLevel(utils.LogLevel)
 	log.SetLevel(logLevel)
 
-	log.Infof("connecting to directus at: %v", utils.DirectusHost)
+	log.Info("connecting to telegram bot")
 
 	bot, err := tgbotapi.NewBotAPI(utils.BotToken)
 	bot.Debug = utils.LogLevel == "debug"
