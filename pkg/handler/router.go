@@ -41,10 +41,16 @@ func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI, chatSettings *
 		localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
 		if err != nil {
 			log.Error(err)
+			return
 		}
-		err = core.SendUpdate(bot, chatSettings, localTimezone)
+		photoConfig, err := core.GenerateNotificationMessage(chatSettings, localTimezone)
 		if err != nil {
 			log.Error(err)
+			return
+		}
+		if _, err := bot.Send(photoConfig); err != nil {
+			log.Error(err)
+			return
 		}
 		return
 	default:

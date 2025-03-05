@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -17,7 +15,7 @@ import (
 )
 
 func ListBonds(startDate time.Time, endDate time.Time, rows int) (*[]schemas.SavingsBonds, error) {
-	queryParams := fmt.Sprintf("rows=%v&filters=issue_date:[%v+TO+%v]&sort=issue_date+asc", rows, startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
+	queryParams := fmt.Sprintf("rows=%v&filters=issue_date:[%v+TO+%v]&sort=issue_date+desc", rows, startDate.Format(time.DateOnly), endDate.Format(time.DateOnly))
 	endpoint := fmt.Sprintf("%v?%v", "https://eservices.mas.gov.sg/statistics/api/v1/bondsandbills/m/listsavingbonds", queryParams)
 
 	log.Debugf("querying %v", endpoint)
@@ -80,21 +78,6 @@ func ListBondInterestRates(bond schemas.SavingsBonds) (*schemas.BondInterest, er
 	return &savingsBondsInterestsAPIResponse.Result.Records[0], nil
 }
 
-func writeFile(buf []byte) error {
-	tmpPath := "./tmp"
-	err := os.MkdirAll(tmpPath, 0700)
-	if err != nil {
-		return err
-	}
-
-	file := filepath.Join(tmpPath, "line-chart.png")
-	err = os.WriteFile(file, buf, 0600)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]byte, error) {
 	chartOption := charts.ChartOption{
 		Width:  1000,
@@ -135,37 +118,44 @@ func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]
 	return &buf, nil
 }
 
-func SendUpdate(bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings, timezone *time.Location) error {
-	bonds, err := ListBonds(time.Now().In(timezone).AddDate(-1, 0, 0), time.Now().In(timezone), 12)
+func GenerateNotificationMessage(chatSettings *schemas.ChatSettings, timezone *time.Location) (*tgbotapi.PhotoConfig, error) {
+	// get the last 12 bonds
+	bondsPtr, err := ListBonds(time.Now().In(timezone).AddDate(-1, 0, 0), time.Now().In(timezone), 12)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	bonds := *bondsPtr
+	latestBond := bonds[0]
+	for i := len(bonds)/2 - 1; i >= 0; i-- {
+		opp := len(bonds) - 1 - i
+		bonds[i], bonds[opp] = bonds[opp], bonds[i]
 	}
 
 	var bondReturns []float64
 	var bondDates []string
 
-	for _, bond := range *bonds {
+	for _, bond := range bonds {
 		bondInterestRate, err := ListBondInterestRates(bond)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		bondReturns = append(bondReturns, bondInterestRate.Year10Return)
 		bondDates = append(bondDates, time.Time(bond.IssueDate).Format("Jan 06"))
 	}
 	buf, err := GenerateSSBInterestRatesChart(bondReturns, bondDates)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	photoFileBytes := tgbotapi.FileBytes{
 		Name:  "picture",
 		Bytes: *buf,
 	}
 	photoConfig := tgbotapi.NewPhoto(chatSettings.ChatId, photoFileBytes)
+
+	// add message information on the latest bond
+	log.Info(time.Time(latestBond.IssueDate).Format(time.DateTime))
 	photoConfig.Caption = "test message test test"
-	if _, err := bot.Send(photoConfig); err != nil {
-		return err
-	}
-	return nil
+	return &photoConfig, nil
 }
 
 func ScheduleUpdate(bot *tgbotapi.BotAPI) {
@@ -176,19 +166,40 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 	var wg sync.WaitGroup
 
 	for {
+		time.Sleep(1 * time.Minute)
 		chats, err := schemas.GetUsersToNotify(int(time.Now().In(localTimezone).Month()))
 		if err != nil {
 			panic(err)
 		}
+
+		if len(chats) > 0 {
+			bondsPtr, err := ListBonds(time.Now().In(localTimezone).AddDate(0, -1, 0), time.Now().In(localTimezone), 1)
+			if err != nil {
+				panic(err)
+			}
+			for _, bond := range *bondsPtr {
+				if time.Time(bond.IssueDate).Month() != time.Now().In(localTimezone).Month() {
+					// this month's bonds not released yet, skipping loop
+					continue
+				}
+			}
+		}
+
 		for _, chat := range chats {
-			log.Info(chat.ChatId)
 			wg.Add(1)
 			go func(bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings, timezone *time.Location) {
 				defer wg.Done()
-				SendUpdate(bot, chatSettings, timezone)
+				photoConfig, err := GenerateNotificationMessage(chatSettings, timezone)
+				if err != nil {
+					panic(err)
+				}
+				if _, err := bot.Send(photoConfig); err != nil {
+					panic(err)
+				}
+				chatSettings.LastNotificationTime = schemas.DatetimeWithoutTimezone(time.Now().In(localTimezone))
+				chatSettings.Update()
 			}(bot, &chat, localTimezone)
+			wg.Wait()
 		}
-		wg.Wait()
-		time.Sleep(2 * time.Second)
 	}
 }

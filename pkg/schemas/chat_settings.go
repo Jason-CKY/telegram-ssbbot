@@ -9,11 +9,34 @@ import (
 	"time"
 
 	"github.com/Jason-CKY/telegram-ssbbot/pkg/utils"
+	log "github.com/sirupsen/logrus"
 )
 
+type DatetimeWithoutTimezone time.Time
+
+func (t DatetimeWithoutTimezone) MarshalJSON() ([]byte, error) {
+	utcTime := time.Time(t).Truncate(time.Second)
+	formattedTime := utcTime.Format("2006-01-02T15:04:05")
+	log.Println("Marshaling DatetimeWithoutTimezone:", formattedTime) // Now this will be called.
+	return json.Marshal(formattedTime)
+}
+
+func (t *DatetimeWithoutTimezone) UnmarshalJSON(data []byte) error {
+	var timeStr string
+	if err := json.Unmarshal(data, &timeStr); err != nil {
+		return err
+	}
+	parsedTime, err := time.Parse("2006-01-02T15:04:05", timeStr)
+	if err != nil {
+		return err
+	}
+	*t = DatetimeWithoutTimezone(parsedTime)
+	return nil
+}
+
 type ChatSettings struct {
-	ChatId      int64     `json:"chat_id"`
-	DateUpdated time.Time `json:"date_updated"`
+	ChatId               int64                   `json:"chat_id"`
+	LastNotificationTime DatetimeWithoutTimezone `json:"last_notification_time"`
 }
 
 func (chatSettings ChatSettings) Create() error {
@@ -131,11 +154,15 @@ func InsertChatSettingsIfNotPresent(chatId int64) (*ChatSettings, bool, error) {
 		return nil, false, err
 	}
 	if chatSettings == nil {
-		chatSettings = &ChatSettings{
-			ChatId:      chatId,
-			DateUpdated: time.Now(),
+		localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
+		if err != nil {
+			panic(err)
 		}
-		err := chatSettings.Create()
+		chatSettings = &ChatSettings{
+			ChatId:               chatId,
+			LastNotificationTime: DatetimeWithoutTimezone(time.Now().In(localTimezone)),
+		}
+		err = chatSettings.Create()
 		if err != nil {
 			return nil, false, err
 		}
@@ -167,7 +194,7 @@ func GetUsersToNotify(month int) ([]ChatSettings, error) {
 	reqBody := fmt.Appendf(nil, `{
 		"query": {
 			"filter": {
-				"month(date_updated)": {
+				"month(last_notification_time)": {
 					"_neq": %v
 				}
 			}
