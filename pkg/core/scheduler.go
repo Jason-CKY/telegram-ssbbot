@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/Jason-CKY/telegram-ssbbot/pkg/schemas"
@@ -134,32 +135,10 @@ func GenerateSSBInterestRatesChart(interestRates []float64, dates []string) (*[]
 	return &buf, nil
 }
 
-func ScheduleUpdate(bot *tgbotapi.BotAPI) {
-	localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
+func SendUpdate(bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings, timezone *time.Location) error {
+	bonds, err := ListBonds(time.Now().In(timezone).AddDate(-1, 0, 0), time.Now().In(timezone), 12)
 	if err != nil {
-		panic(err)
-	}
-	// var wg sync.WaitGroup
-	// for {
-	// 	dueReminders, err := schemas.GetDueReminders()
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	for i := 0; i < len(dueReminders); i++ {
-	// 		wg.Add(1)
-	// 		reminder := dueReminders[i]
-	// 		go func(reminder schemas.Reminder, bot *tgbotapi.BotAPI) {
-	// 			defer wg.Done()
-	// 			TriggerReminder(reminder, bot)
-	// 		}(reminder, bot)
-	// 	}
-	// 	wg.Wait()
-	// 	time.Sleep(24 * time.Hour)
-	// }
-	// extract the last 12 months of bonds information
-	bonds, err := ListBonds(time.Now().In(localTimezone).AddDate(-1, 0, 0), time.Now().In(localTimezone), 12)
-	if err != nil {
-		panic(err)
+		return err
 	}
 
 	var bondReturns []float64
@@ -168,17 +147,48 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 	for _, bond := range *bonds {
 		bondInterestRate, err := ListBondInterestRates(bond)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		bondReturns = append(bondReturns, bondInterestRate.Year10Return)
 		bondDates = append(bondDates, time.Time(bond.IssueDate).Format("Jan 06"))
 	}
 	buf, err := GenerateSSBInterestRatesChart(bondReturns, bondDates)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	err = writeFile(*buf)
+	photoFileBytes := tgbotapi.FileBytes{
+		Name:  "picture",
+		Bytes: *buf,
+	}
+	photoConfig := tgbotapi.NewPhoto(chatSettings.ChatId, photoFileBytes)
+	photoConfig.Caption = "test message test test"
+	if _, err := bot.Send(photoConfig); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ScheduleUpdate(bot *tgbotapi.BotAPI) {
+	localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
 	if err != nil {
 		panic(err)
+	}
+	var wg sync.WaitGroup
+
+	for {
+		chats, err := schemas.GetUsersToNotify(int(time.Now().In(localTimezone).Month()))
+		if err != nil {
+			panic(err)
+		}
+		for _, chat := range chats {
+			log.Info(chat.ChatId)
+			wg.Add(1)
+			go func(bot *tgbotapi.BotAPI, chatSettings *schemas.ChatSettings, timezone *time.Location) {
+				defer wg.Done()
+				SendUpdate(bot, chatSettings, timezone)
+			}(bot, &chat, localTimezone)
+		}
+		wg.Wait()
+		time.Sleep(2 * time.Second)
 	}
 }

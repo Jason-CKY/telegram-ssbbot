@@ -40,40 +40,11 @@ func HandleCommand(update *tgbotapi.Update, bot *tgbotapi.BotAPI, chatSettings *
 	case "rates":
 		localTimezone, err := time.LoadLocation("Asia/Singapore") // Look up a location by it's IANA name.
 		if err != nil {
-			panic(err)
+			log.Error(err)
 		}
-		bonds, err := core.ListBonds(time.Now().In(localTimezone).AddDate(-1, 0, 0), time.Now().In(localTimezone), 12)
+		err = core.SendUpdate(bot, chatSettings, localTimezone)
 		if err != nil {
 			log.Error(err)
-			return
-		}
-
-		var bondReturns []float64
-		var bondDates []string
-
-		for _, bond := range *bonds {
-			bondInterestRate, err := core.ListBondInterestRates(bond)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-			bondReturns = append(bondReturns, bondInterestRate.Year10Return)
-			bondDates = append(bondDates, time.Time(bond.IssueDate).Format("Jan 06"))
-		}
-		buf, err := core.GenerateSSBInterestRatesChart(bondReturns, bondDates)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		photoFileBytes := tgbotapi.FileBytes{
-			Name:  "picture",
-			Bytes: *buf,
-		}
-		photoConfig := tgbotapi.NewPhoto(update.Message.Chat.ID, photoFileBytes)
-		photoConfig.Caption = "test message test test"
-		if _, err := bot.Send(photoConfig); err != nil {
-			log.Error(err)
-			return
 		}
 		return
 	default:
