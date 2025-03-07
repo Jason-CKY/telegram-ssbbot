@@ -37,7 +37,7 @@ type ChatSettings struct {
 }
 
 func (chatSettings ChatSettings) Create() error {
-	endpoint := fmt.Sprintf("%v/items/chat_settings", utils.DirectusHost)
+	endpoint := fmt.Sprintf("%v/items/ssbbot_chat_settings", utils.DirectusHost)
 	reqBody, _ := json.Marshal(chatSettings)
 	req, httpErr := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -60,7 +60,7 @@ func (chatSettings ChatSettings) Create() error {
 }
 
 func (chatSettings ChatSettings) Update() error {
-	endpoint := fmt.Sprintf("%v/items/chat_settings/%v", utils.DirectusHost, chatSettings.ChatId)
+	endpoint := fmt.Sprintf("%v/items/ssbbot_chat_settings/%v", utils.DirectusHost, chatSettings.ChatId)
 	reqBody, _ := json.Marshal(chatSettings)
 	req, httpErr := http.NewRequest(http.MethodPatch, endpoint, bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -84,7 +84,7 @@ func (chatSettings ChatSettings) Update() error {
 }
 
 func (chatSettings ChatSettings) Delete() error {
-	endpoint := fmt.Sprintf("%v/items/chat_settings/%v", utils.DirectusHost, chatSettings.ChatId)
+	endpoint := fmt.Sprintf("%v/items/ssbbot_chat_settings/%v", utils.DirectusHost, chatSettings.ChatId)
 	req, httpErr := http.NewRequest(http.MethodDelete, endpoint, nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", utils.DirectusToken))
@@ -105,7 +105,7 @@ func (chatSettings ChatSettings) Delete() error {
 }
 
 func GetChatSettings(chatId int64) (*ChatSettings, error) {
-	endpoint := fmt.Sprintf("%v/items/chat_settings", utils.DirectusHost)
+	endpoint := fmt.Sprintf("%v/items/ssbbot_chat_settings", utils.DirectusHost)
 	reqBody := []byte(fmt.Sprintf(`{
 		"query": {
 			"filter": {
@@ -187,7 +187,7 @@ func MigrateChatSettingsChatId(fromChatId int64, toChatId int64) error {
 }
 
 func GetUsersToNotify(month int) ([]ChatSettings, error) {
-	endpoint := fmt.Sprintf("%v/items/chat_settings", utils.DirectusHost)
+	endpoint := fmt.Sprintf("%v/items/ssbbot_chat_settings", utils.DirectusHost)
 	reqBody := fmt.Appendf(nil, `{
 		"query": {
 			"filter": {
