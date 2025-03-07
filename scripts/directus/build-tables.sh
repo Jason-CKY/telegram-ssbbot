@@ -22,7 +22,7 @@ curl -X POST -H "Content-Type: application/json" \
     $DIRECTUS_URL/collections
 
 curl -X POST -H "Content-Type: application/json" \
-    -H "Authorization: Bearer $TEMP_ACCESS_TOKEN" \
+    -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
     -d '{"type":"dateTime","meta":{"interface":"datetime","special":null,"required":true,"options":{"relative":true}},"field":"last_notification_time"}' \
     $DIRECTUS_URL/fields/ssbbot_chat_settings
 
