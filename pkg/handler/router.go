@@ -12,7 +12,7 @@ import (
 )
 
 func HandleUpdate(update *tgbotapi.Update, bot *tgbotapi.BotAPI) {
-	if update.Message != nil {
+	if update.Message != nil && utils.IsUsernameAllowed(update.Message.From.UserName) {
 		if update.Message.IsCommand() {
 			HandleCommand(update, bot)
 		}

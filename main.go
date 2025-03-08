@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/Jason-CKY/telegram-ssbbot/pkg/core"
@@ -20,12 +18,11 @@ func main() {
 		log.Infof("Error loading .env file: %v\nUsing environment variables instead...", err)
 	}
 
-	flag.StringVar(&utils.LogLevel, "log-level", utils.LookupEnvOrString("LOG_LEVEL", utils.LogLevel), "Logging level for the server")
-	flag.StringVar(&utils.DirectusHost, "directus-host", utils.LookupEnvOrString("DIRECTUS_HOST", utils.DirectusHost), "Hostname for directus server")
-	flag.StringVar(&utils.DirectusToken, "directus-token", utils.LookupEnvOrString("DIRECTUS_TOKEN", utils.DirectusToken), "Access token for directus")
-	flag.StringVar(&utils.BotToken, "bot-token", utils.LookupEnvOrString("TELEGRAM_BOT_TOKEN", utils.BotToken), "Bot token for telegram bot")
-
-	flag.Parse()
+	utils.LogLevel = utils.LookupEnvString("LOG_LEVEL")
+	utils.DirectusHost = utils.LookupEnvString("DIRECTUS_HOST")
+	utils.DirectusToken = utils.LookupEnvString("DIRECTUS_TOKEN")
+	utils.BotToken = utils.LookupEnvString(("TELEGRAM_BOT_TOKEN"))
+	utils.WhitelistedUsernames = utils.LookupEnvStringArray("ALLOWED_USERNAMES")
 
 	// setup logrus
 	log.SetReportCaller(true)
