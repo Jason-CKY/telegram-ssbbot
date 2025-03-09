@@ -4,7 +4,7 @@
 
 - docker (docker-desktop if you are using windows)
 - docker-compose (comes with docker-desktop, but can install [here](https://docs.docker.com/compose/install/standalone/) if you are not on windows)
-- [>=Go v1.21](https://go.dev/doc/install)
+- [>=Go v1.24](https://go.dev/doc/install)
 - [Air](https://github.com/cosmtrek/air)
 
 ## Features
@@ -17,7 +17,7 @@
 Run `cp .env.example .env`, and fill in the relevant information
 
 ```sh
-make build-dev
+make start
 # start golang server with code reloading using air
 air
 ```
