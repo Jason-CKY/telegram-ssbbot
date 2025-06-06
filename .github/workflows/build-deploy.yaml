@@ -1,9 +1,11 @@
 name: build-deploy
 
-on: 
+on:
   push:
+    branches:
+      - main # Trigger on pushes to the main branch
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # Keep existing tag trigger
 
 jobs:
   build:
@@ -11,12 +13,37 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: olegtarasov/get-tag@v2.1.3
-        id: tagName
+
+      - name: Set image tag
+        id: image_tag
+        run: |
+          # Check if the current ref is a tag (starts with 'refs/tags/')
+          # This condition will be true for 'v*.*.*' pushes
+          IS_TAG_PUSH="false"
+          if [[ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
+            echo "IS_TAG_PUSH=true" >> $GITHUB_OUTPUT
+            # For tag pushes, use the tag name directly
+            echo "GIT_TAG_NAME=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "IS_TAG_PUSH=false" >> $GITHUB_OUTPUT
+            # For branch pushes (every commit), use the short SHA
+            echo "GIT_TAG_NAME=${{ github.sha::0:7 }}" >> $GITHUB_OUTPUT
+          fi
+
+
       - name: Build and push the image
         run: |
           docker login --username Jason-CKY --password ${{ secrets.GH_PAT }} ghcr.io
-          docker build -f ./build/Dockerfile --tag ghcr.io/jason-cky/telegram-ssbbot:$GIT_TAG_NAME --target production .
-          docker push ghcr.io/jason-cky/telegram-ssbbot:$GIT_TAG_NAME
-          docker tag ghcr.io/jason-cky/telegram-ssbbot:$GIT_TAG_NAME ghcr.io/jason-cky/telegram-ssbbot:latest
-          docker push ghcr.io/jason-cky/telegram-ssbbot:latest
+          
+          # Build and push the image with the specific tag (commit SHA or release tag)
+          docker build -f ./build/Dockerfile --tag ghcr.io/jason-cky/telegram-ssbbot:${{ steps.image_tag.outputs.GIT_TAG_NAME }} --target production .
+          docker push ghcr.io/jason-cky/telegram-ssbbot:${{ steps.image_tag.outputs.GIT_TAG_NAME }}
+
+          # Conditionally push the 'latest' tag only if it's a tag push
+          if [[ "${{ steps.image_tag.outputs.IS_TAG_PUSH }}" == "true" ]]; then
+            echo "Pushing 'latest' tag because it's a release tag push."
+            docker tag ghcr.io/jason-cky/telegram-ssbbot:${{ steps.image_tag.outputs.GIT_TAG_NAME }} ghcr.io/jason-cky/telegram-ssbbot:latest
+            docker push ghcr.io/jason-cky/telegram-ssbbot:latest
+          else
+            echo "Skipping 'latest' tag push as it's a regular commit to a branch."
+          fi

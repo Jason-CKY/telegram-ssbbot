@@ -231,7 +231,7 @@ func GetUsersToNotify(month int) ([]ChatSettings, error) {
 		"query": {
 			"filter": {
 				"latest_ssb_month_notified": {
-					"_neq: %v
+					"_neq": %v
 				}
 			}
 		}
