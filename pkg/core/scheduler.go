@@ -209,7 +209,9 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 
 	for {
 		time.Sleep(1 * time.Minute)
-		chats, err := schemas.GetUsersToNotify(int(time.Now().In(localTimezone).Month()) - 1)
+		// rates for the next month will be released in the current month
+		monthToFind := int(time.Now().In(localTimezone).Month()) + 1
+		chats, err := schemas.GetUsersToNotify(monthToFind)
 		if err != nil {
 			panic(err)
 		}
@@ -220,7 +222,7 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 				panic(err)
 			}
 			for _, bond := range *bondsPtr {
-				if time.Time(bond.IssueDate).Month() < time.Now().In(localTimezone).Month() {
+				if int(time.Time(bond.IssueDate).Month()) < monthToFind {
 					// this month's bonds not released yet, skipping loop
 					continue
 				}
@@ -239,6 +241,7 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 					panic(err)
 				}
 				chatSettings.LastNotificationTime = schemas.DatetimeWithoutTimezone(time.Now().In(localTimezone))
+				chatSettings.LatestSSBMonthNotified = monthToFind
 				chatSettings.Update()
 			}(bot, &chat, localTimezone)
 			wg.Wait()

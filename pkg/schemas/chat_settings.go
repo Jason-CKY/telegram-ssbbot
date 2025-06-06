@@ -33,8 +33,9 @@ func (t *DatetimeWithoutTimezone) UnmarshalJSON(data []byte) error {
 }
 
 type ChatSettings struct {
-	ChatId               int64                   `json:"chat_id"`
-	LastNotificationTime DatetimeWithoutTimezone `json:"last_notification_time"`
+	ChatId                 int64                   `json:"chat_id"`
+	LastNotificationTime   DatetimeWithoutTimezone `json:"last_notification_time"`
+	LatestSSBMonthNotified int                     `json:"latest_ssb_month_notified"`
 }
 
 // MarshalJSON implements the json.Marshaler interface.
@@ -229,8 +230,8 @@ func GetUsersToNotify(month int) ([]ChatSettings, error) {
 	reqBody := fmt.Appendf(nil, `{
 		"query": {
 			"filter": {
-				"month(last_notification_time)": {
-					"_neq": %v
+				"latest_ssb_month_notified": {
+					"_neq: %v
 				}
 			}
 		}
