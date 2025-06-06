@@ -27,7 +27,8 @@ jobs:
           else
             echo "IS_TAG_PUSH=false" >> $GITHUB_OUTPUT
             # For branch pushes (every commit), use the short SHA
-            echo "GIT_TAG_NAME=${{ github.sha::0:7 }}" >> $GITHUB_OUTPUT
+            # CORRECTED LINE BELOW:
+            echo "GIT_TAG_NAME=${{ github.sha[0:7] }}" >> $GITHUB_OUTPUT
           fi
 
 
@@ -42,7 +43,7 @@ jobs:
           # Conditionally push the 'latest' tag only if it's a tag push
           if [[ "${{ steps.image_tag.outputs.IS_TAG_PUSH }}" == "true" ]]; then
             echo "Pushing 'latest' tag because it's a release tag push."
-            docker tag ghcr.io/jason-cky/telegram-ssbbot:${{ steps.image_tag.outputs.GIT_TAG_NAME }} ghcr.io/jason-cky/telegram-ssbbot:latest
+            docker tag ghcr.com/jason-cky/telegram-ssbbot:${{ steps.image_tag.outputs.GIT_TAG_NAME }} ghcr.io/jason-cky/telegram-ssbbot:latest
             docker push ghcr.io/jason-cky/telegram-ssbbot:latest
           else
             echo "Skipping 'latest' tag push as it's a regular commit to a branch."
