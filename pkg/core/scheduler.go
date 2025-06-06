@@ -209,7 +209,7 @@ func ScheduleUpdate(bot *tgbotapi.BotAPI) {
 
 	for {
 		time.Sleep(1 * time.Minute)
-		chats, err := schemas.GetUsersToNotify(int(time.Now().In(localTimezone).Month()))
+		chats, err := schemas.GetUsersToNotify(int(time.Now().In(localTimezone).Month()) - 1)
 		if err != nil {
 			panic(err)
 		}
